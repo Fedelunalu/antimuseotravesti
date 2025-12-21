@@ -1,0 +1,138 @@
+[gd_scene load_steps=9 format=3 uid="uid://cup5s5e2b1yu7"]
+
+[ext_resource type="PackedScene" uid="uid://djum7k2po23qy" path="res://player.tscn" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://c4v13ya1he3qn" path="res://scripts/main.gd" id="2_0xm2m"]
+[ext_resource type="Script" uid="uid://bjo6te6hd7yup" path="res://scripts/artwork_spawner.gd" id="3_0xm2m"]
+[ext_resource type="PackedScene" uid="uid://csqifj1ha2gwq" path="res://artwork.tscn" id="4_1bvp3"]
+[ext_resource type="PackedScene" uid="uid://1j5wst20flin" path="res://dragona.tscn" id="5_lquwl"]
+[ext_resource type="PackedScene" uid="uid://qpmojdqauc7w" path="res://dialogue_ui.tscn" id="6_abcde"]
+[ext_resource type="Script" uid="uid://dmdj7iej3wnle" path="res://scripts/journal.gd" id="7_journal"]
+
+[sub_resource type="Environment" id="Environment_0xm2m"]
+background_mode = 1
+ambient_light_source = 1
+glow_enabled = true
+volumetric_fog_albedo = Color(0.0728426, 0.0728426, 0.0728426, 1)
+
+[node name="Main" type="Node3D"]
+script = ExtResource("2_0xm2m")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_0xm2m")
+
+[node name="Player" parent="." instance=ExtResource("1_ig7tw")]
+
+[node name="ArtworkSpawner" type="Node3D" parent="."]
+script = ExtResource("3_0xm2m")
+artwork_scene = ExtResource("4_1bvp3")
+
+[node name="Dragona" parent="." instance=ExtResource("5_lquwl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -10)
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="DialogueUI" parent="CanvasLayer" instance=ExtResource("6_abcde")]
+
+[node name="Journal" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("7_journal")
+
+[node name="Panel" type="Panel" parent="CanvasLayer/Journal"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -325.0
+offset_right = 450.0
+offset_bottom = 325.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TabContainer" type="TabContainer" parent="CanvasLayer/Journal/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+current_tab = 0
+
+[node name="TuEscritura" type="VBoxContainer" parent="CanvasLayer/Journal/Panel/TabContainer"]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/Journal/Panel/TabContainer/TuEscritura"]
+layout_mode = 2
+text = "bitácora-registro"
+horizontal_alignment = 1
+
+[node name="TextEdit" type="TextEdit" parent="CanvasLayer/Journal/Panel/TabContainer/TuEscritura"]
+layout_mode = 2
+size_flags_vertical = 3
+placeholder_text = "escribe... o no"
+wrap_mode = 1
+
+[node name="FragmentosVisuales" type="VBoxContainer" parent="CanvasLayer/Journal/Panel/TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="Label" type="Label" parent="CanvasLayer/Journal/Panel/TabContainer/FragmentosVisuales"]
+layout_mode = 2
+text = "fragmentos visuales"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="CanvasLayer/Journal/Panel/TabContainer/FragmentosVisuales"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/Journal/Panel/TabContainer/FragmentosVisuales/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Señales" type="VBoxContainer" parent="CanvasLayer/Journal/Panel/TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="Label" type="Label" parent="CanvasLayer/Journal/Panel/TabContainer/Señales"]
+layout_mode = 2
+text = "S E Ñ A L E S"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="CanvasLayer/Journal/Panel/TabContainer/Señales"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/Journal/Panel/TabContainer/Señales/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="SignalNotification" type="Label" parent="CanvasLayer/Journal"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -100.0
+offset_top = 50.0
+offset_right = 100.0
+offset_bottom = 90.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(0, 1, 0.5, 1)
+theme_override_font_sizes/font_size = 24
+text = "⚡ SEÑAL ⚡"
+horizontal_alignment = 1
+vertical_alignment = 1

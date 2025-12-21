@@ -1,0 +1,3 @@
+  ERROR: res://scripts/glitch_overlay.gd:25 - Parse Error: Cannot find member "STRETCH_KEEP_ASPECT_COVER" in base "TextureRect".
+  ERROR: modules/gdscript/gdscript.cpp:3022 - Failed to load script "res://scripts/glitch_overlay.gd" with error "Parse error".
+  ERROR: res://scripts/glitch_overlay.gd:25 - Parse Error: Cannot find member "STRETCH_KEEP_ASPECT_COVER" in base "TextureRect".

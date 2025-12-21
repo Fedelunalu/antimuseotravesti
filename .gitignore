@@ -1,0 +1,28 @@
+# Godot-specific ignores
+.godot/
+.tmp/
+.import/
+export_presets.cfg
+build/
+
+# Archivos grandes (Límite de GitHub 100MB)
+*.zip
+*.rar
+*.7z
+
+# Multimedia pesada (si aplica)
+*.mp4
+*.mov
+
+# General ignores
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.bak
+
+# Carpetas de herramientas/entorno
+.qodo/
+.vscode/
+.zencoder/
+.zenflow/

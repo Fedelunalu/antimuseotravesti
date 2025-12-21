@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://ckc1j0mew7yud"
+path="res://.godot/imported/La Pinchajarawis.ogg-ef58520d8a7ac19b535f1643821a0f37.oggvorbisstr"
+
+[deps]
+
+source_file="res://La Pinchajarawis.ogg"
+dest_files=["res://.godot/imported/La Pinchajarawis.ogg-ef58520d8a7ac19b535f1643821a0f37.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
