@@ -360,60 +360,79 @@ func play_ceremonial_video(player_position):
 	Global.video_watched = true
 	print("Video ceremonial completado. Esperando interacción final.")
 
-func play_single_video(target_position, direction):
-	# Try multiple candidate video paths (OGV only - MP4 not natively supported in Godot 4)
-	var candidates = [
-		"res://assets/La Pinchajarawis.ogv",
-		"res://videos/ceremonial_scene.ogv"
-	]
+func play_dragona_memory_video():
+	print("🎞️ Iniciando RECUERDOS DE LA DRAGONA")
+	var video_path = "res://dragonanacefinal.ogv"
+	
+	if not ResourceLoader.exists(video_path):
+		video_path = "res://dragona-naciendo.ogv"
+		
+	if not ResourceLoader.exists(video_path):
+		print("❌ ERROR: No se encontró el video de la dragona en ", video_path)
+		# No hacemos fallback a La Pinchajarawis para no confundir audios
+		
+	# Re-use the multi-screen logic or single full-screen? 
+	# User mentioned "play a video for Dragona memories", usually full screen is better for impact.
+	# But we'll follow the established ceremonial style for consistency if preferred.
+	# Let's use a single front screen for the "memory" to make it more intimate.
+	
+	var player_node = get_tree().get_first_node_in_group("player")
+	if player_node:
+		var target_pos = player_node.global_position + (player_node.global_transform.basis.z * -5.0)
+		var direction = player_node.global_transform.basis.z
+		await play_single_video(target_pos, direction, video_path)
 
+func play_single_video(target_position, direction, custom_path = ""):
 	var video_stream = null
-	for c in candidates:
-		if FileAccess.file_exists(c):
-			video_stream = ResourceLoader.load(c)
-			if video_stream:
-				break
-
+	if custom_path != "" and ResourceLoader.exists(custom_path):
+		video_stream = ResourceLoader.load(custom_path)
+	
 	if video_stream == null:
-		print("No se pudo cargar el video ceremonial, usando fallback visual")
-		show_fallback_screen(target_position, direction)
+		print("No se pudo cargar el video solicitado: ", custom_path)
+		# No fallback to other specific story videos
 		return
 
 	# Crear VideoStreamPlayer dentro de un SubViewport para proyectarlo en 3D
 	var viewport = SubViewport.new()
-	viewport.size = Vector2i(1920, 1080)
+	viewport.size = Vector2i(1280, 720)
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
-
+	viewport.own_world_3d = true # Isolar para evitar interferencias
+	
 	var video_player = VideoStreamPlayer.new()
 	video_player.stream = video_stream
 	video_player.autoplay = false
 	video_player.expand = true
+	video_player.anchor_right = 1.0
+	video_player.anchor_bottom = 1.0
+	video_player.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
 	viewport.add_child(video_player)
-	get_tree().root.add_child(viewport)
+	add_child(viewport)
 
-	# Crear QuadMesh para mostrar el contenido del Viewport
+	# 1. Crear el material
+	var material = StandardMaterial3D.new()
+	material.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+	
+	# 2. Configurar el Mesh
 	var mesh_instance = MeshInstance3D.new()
 	var quad_mesh = QuadMesh.new()
-	quad_mesh.size = Vector2(6, 3.375)  # Proporción 16:9
+	quad_mesh.size = Vector2(16, 9) # Doble de grande (antes 8x4.5)
 	mesh_instance.mesh = quad_mesh
-
-	# Crear material usando el Viewport como textura
-	var material = StandardMaterial3D.new()
-	material.albedo_texture = viewport.get_texture()
-	material.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
 	mesh_instance.set_surface_override_material(0, material)
-
-	# Posicionar y orientar el mesh
-	mesh_instance.global_position = target_position
-	mesh_instance.look_at(target_position - direction, Vector3.UP)
-	mesh_instance.rotate_x(deg_to_rad(180)) # Corregir orientación
-
-	# Añadir a la escena
+	
+	# 3. Añadir a la escena
 	add_child(mesh_instance)
-
-	# Iniciar reproducción y esperar a que termine (o timeout o escape)
+	
+	# 4. Posicionar y orientar
+	mesh_instance.global_position = target_position
+	# Forzar que el video mire al jugador (usando -direction para invertir la cara del quad)
+	mesh_instance.look_at(target_position - direction, Vector3.UP)
+	
+	# 5. Esperar un frame y asignar textura
+	await get_tree().process_frame
+	material.albedo_texture = viewport.get_texture()
+	
+	# Iniciar reproducción
 	video_player.play()
 	var elapsed = 0.0
 	var timeout = 600.0 # 10 mins (virtually infinite)
@@ -449,10 +468,16 @@ func play_single_video(target_position, direction):
 			print("Warning: Cape Character found but no start_final_dialogue method.")
 	else:
 		print("Warning: Cape Character not found for final dialogue.")
-
-	mesh_instance.queue_free()
-	viewport.queue_free()
-
+	
+	Global.video_playing = false
+	
+	# Cleanup
+	if is_instance_valid(mesh_instance):
+		mesh_instance.queue_free()
+	if is_instance_valid(viewport):
+		viewport.queue_free()
+	
+	print("Video single finalizado.")
 
 func _create_video_instance(video_stream, target_position, direction):
 	# Helper: create a SubViewport + VideoStreamPlayer + Quad mesh, return a struct-like dict
@@ -549,7 +574,7 @@ func spawn_cape_character():
 	# 1. Carga Directa del FBX
 	var path = "res://assets/cape_character.fbx"
 	var inst = null
-	if FileAccess.file_exists(path):
+	if ResourceLoader.exists(path):
 		var res = load(path)
 		if res:
 			inst = res.instantiate()
@@ -733,4 +758,50 @@ func show_portal():
 	portal_container.add_child(particles)
 	particles.position = Vector3(0, 0.5, 0)
 
+	# 3. Area3D de Entrada al Portal para Cierre de Nivel
+	var area = Area3D.new()
+	area.collision_layer = 0
+	area.collision_mask = 1 # Choca con el jugador
+	var col = CollisionShape3D.new()
+	var shape = SphereShape3D.new()
+	shape.radius = 4.0
+	col.shape = shape
+	area.add_child(col)
+	portal_container.add_child(area)
+	
+	area.body_entered.connect(_on_portal_entered)
+
 	print("🌸 Portal Rosa de Salida activado en ", portal_container.global_position)
+
+func _on_portal_entered(body):
+	if body.is_in_group("player"):
+		print("🌀 JUGADOR ENTRÓ AL PORTAL - FINALIZANDO NIVEL")
+		# 1. Congelar movimiento
+		if body.has_method("set_physics_process"):
+			body.set_physics_process(false)
+		
+		# 2. Efecto de desvanecimiento negro
+		var canvas = get_node_or_null("CanvasLayer")
+		if canvas:
+			var fade = ColorRect.new()
+			fade.color = Color(0, 0, 0, 0)
+			fade.anchor_right = 1.0
+			fade.anchor_bottom = 1.0
+			canvas.add_child(fade)
+			
+			var tween = create_tween()
+			tween.tween_property(fade, "color:a", 1.0, 3.0)
+			await tween.finished
+			
+			# 3. Mensaje Final
+			var label = Label.new()
+			label.text = "LA CONCIENCIA SE DISUELVE...\nEL ARCHIVO PERMANECE.\n\nFIN DEL NIVEL 1"
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			label.anchor_right = 1.0
+			label.anchor_bottom = 1.0
+			label.add_theme_font_size_override("font_size", 40)
+			canvas.add_child(label)
+			
+			# 4. Opción de reinicio o volver a itch?
+			# Por ahora lo dejamos ahí para el cierre dramático.

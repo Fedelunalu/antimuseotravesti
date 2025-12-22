@@ -27,9 +27,8 @@ func on_gaze_enter():
 
 func on_gaze_exit():
 	is_gazed = false
-	# Solo ocultar si nosotros somos los hablantes actuales
-	if Global.current_speaker == self:
-		Global.hide_dialogue(self)
+	# Se ha eliminado el cierre automático por mirada para evitar que el diálogo 
+	# se cierre solo al mover mínimamente la cámara de un personaje tan grande.
 
 func interact(_player):
 	if Global.video_playing or interaction_cooldown:

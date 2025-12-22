@@ -12,21 +12,26 @@ func _ready():
 	if artwork_descriptions.is_empty():
 		load_artwork_descriptions()
 	
-	if mesh and not texture_path.is_empty():
-		var texture = load(texture_path)
-		if texture:
-			var material = StandardMaterial3D.new()
-			material.albedo_texture = texture
-			material.emission_enabled = true
-			material.emission = Color(1, 1, 1) * 0.05  # Reduced brightness
-			material.emission_texture = texture
-			material.metallic = 0.1
-			material.roughness = 0.7
-			mesh.material_override = material
-		else:
-			# Placeholder
+	if mesh:
+		var has_texture = false
+		if not texture_path.is_empty():
+			var texture = load(texture_path)
+			if texture:
+				var material = StandardMaterial3D.new()
+				material.albedo_texture = texture
+				material.emission_enabled = true
+				material.emission = Color(1, 1, 1) * 0.05
+				material.emission_texture = texture
+				material.metallic = 0.1
+				material.roughness = 0.7
+				mesh.material_override = material
+				has_texture = true
+		
+		if not has_texture:
+			# Fallback color for web when load fails
 			var material = StandardMaterial3D.new()
 			material.albedo_color = Color(randf(), randf(), randf(), 1.0)
+			material.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
 			mesh.material_override = material
 	
 	# Agregar al grupo de obras de arte

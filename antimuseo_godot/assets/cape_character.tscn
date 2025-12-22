@@ -1,9 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://scripts/cape_character.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/cape_character.gd" id="1_cape"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 18.0
+height = 40.0
 
 [node name="CapeCharacter" type="StaticBody3D"]
-script = ExtResource("1")
+collision_layer = 3
+script = ExtResource("1_cape")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-shape = CapsuleShape3D
+shape = SubResource("CapsuleShape3D_1")

@@ -36,18 +36,32 @@ func _ready():
 	ground.position.y = -1.0  # Más bajo para que la dragona esté completamente sobre el suelo
 	add_child(ground)
 	
-	# Load all image files from the directory
-	var dir = DirAccess.open(images_path)
-	if dir:
-		dir.list_dir_begin()
-		var file_name = dir.get_next()
-		while file_name != "":
-			if not dir.current_is_dir() and (file_name.ends_with(".jpg") or file_name.ends_with(".png") or file_name.ends_with(".jpeg")):
-				image_files.append(images_path + "/" + file_name)
-			file_name = dir.get_next()
-		dir.list_dir_end()
-	else:
-		print("Error: Could not open images directory: " + images_path)
+	# Load image list from descriptions JSON (manifest) instead of DirAccess
+	# which is unreliable in web exports.
+	var json_path = "res://artwork_descriptions.json"
+	if FileAccess.file_exists(json_path):
+		var file = FileAccess.open(json_path, FileAccess.READ)
+		var json = JSON.new()
+		json.parse(file.get_as_text())
+		var data = json.get_data()
+		if data is Dictionary:
+			for key in data.keys():
+				image_files.append(images_path + "/" + key)
+			print("Loaded ", image_files.size(), " images from manifest.")
+	
+	# Fallback if JSON fails or is missing, try DirAccess (local dev)
+	if image_files.is_empty():
+		var dir = DirAccess.open(images_path)
+		if dir:
+			dir.list_dir_begin()
+			var file_name = dir.get_next()
+			while file_name != "":
+				if not dir.current_is_dir() and (file_name.ends_with(".jpg") or file_name.ends_with(".png") or file_name.ends_with(".jpeg") or file_name.ends_with(".import")):
+					var clean_name = file_name.replace(".import", "")
+					if not image_files.has(images_path + "/" + clean_name):
+						image_files.append(images_path + "/" + clean_name)
+				file_name = dir.get_next()
+			dir.list_dir_end()
 	
 	# Spawn one artwork per image, up to available
 	for i in range(image_files.size()):

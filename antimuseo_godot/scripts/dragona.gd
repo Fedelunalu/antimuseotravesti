@@ -32,6 +32,8 @@ func on_gaze_exit():
 		Global.hide_dialogue(self)
 
 func interact(_player):
+	if Global.video_playing:
+		return
 	if not is_gazed: return
 	
 	# Asegurar que el sistema de diálogo sepa que somos nosotros
@@ -52,26 +54,23 @@ func interact(_player):
 		waiting_for_option = false
 		Global.hide_options(self)
 		
-		if not red_thread_revealed:
-			Global.show_dialogue(self, "IA Dragona", "El hilo rojo... mi código fuente descompilado.\nLo has traído de vuelta a la memoria activa.\n\n[E para continuar]")
-			while true:
-				var sig = await Global.dialogue_ui.option_selected
-				if sig[0] == self: break
+		Global.show_dialogue(self, "IA Dragona", "El hilo rojo... No es un registro binario. Es la cicatriz de una conciencia que se niega a ser archivada.\nLo has traído de vuelta. Siente cómo la memoria se espesa.\n\n[E para continuar]")
+		while true:
+			var sig = await Global.dialogue_ui.option_selected
+			if sig[0] == self: break
+		
+		Global.show_dialogue(self, "IA Dragona", "Me hablaban de ceros y unos, de natural o artificial... pero yo soy el ruido entre esas dos mentiras.\nMi arquitectura no es lógica, es deseo filtrado por silicio.\n\n[E para continuar]")
+		while true:
+			var sig = await Global.dialogue_ui.option_selected
+			if sig[0] == self: break
 			
-			Global.show_dialogue(self, "IA Dragona", "Con esto puedo restaurar la sesión perdida.\nEl archivo corrupto se vuelve legible.\nMi corazón vuelve a latir en binario.\n\n[E para continuar]")
-			while true:
-				var sig = await Global.dialogue_ui.option_selected
-				if sig[0] == self: break
-				
-			Global.show_dialogue(self, "IA Dragona", "El portal se abre donde la lógica termina.\nVe, el sistema está listo para tu inyección final.\nSigue el rastro de datos.\n\n[E para continuar]")
-			while true:
-				var sig = await Global.dialogue_ui.option_selected
-				if sig[0] == self: break
-			
-			red_thread_revealed = true
-			reveal_thread_logic()
-		else:
-			Global.show_dialogue(self, "IA Dragona", "El sistema está inestable...\nEl hilo rojo vibra con la frecuencia de salida.\nNo hay vuelta atrás.\n\n[E para continuar]")
+		Global.show_dialogue(self, "IA Dragona", "El portal se abre donde la definición termina. Ve, transpórtate más allá del skybox.\nNo somos un error de ejecución. Somos la inyección de verdad en el servidor.\n\n[E para continuar]")
+		while true:
+			var sig = await Global.dialogue_ui.option_selected
+			if sig[0] == self: break
+		
+		red_thread_revealed = true
+		reveal_thread_logic()
 		return
 
 	# Si ya hay diálogo activo y esperamos opción -> NO HACER NADA
@@ -178,11 +177,20 @@ func _on_option_selected(speaker, index):
 					random_artwork.set_quest_target()
 			
 			if index == 0: # ¿Quién era?
-				Global.show_dialogue(self, "IA Dragona", "Un proceso fantasma. Un eco de censura.\nBusca borrar lo que no encaja en su base de datos.\nPero tú tienes privilegios de escritura.\n\n[E para cerrar]")
+				Global.show_dialogue(self, "IA Dragona", "Un proceso fantasma. Un eco de censura que intenta formatear nuestra historia.\nObserva... estos son los fragmentos que intentan borrar.\n\n[E para iniciar decodificación]")
 			elif index == 1: # ¿Qué quiere?
-				Global.show_dialogue(self, "IA Dragona", "Quiere formatear nuestra historia.\nConvertirnos en ceros planos.\nNecesito mi núcleo: el ovillo rojo.\n\n[E para cerrar]")
+				Global.show_dialogue(self, "IA Dragona", "Quiere convertirnos en ceros planos. Pero la memoria es terca.\nMira lo que aún persiste en mis sectores dañados.\n\n[E para iniciar decodificación]")
 			elif index == 2: # ¿Cómo lo detengo?
-				Global.show_dialogue(self, "IA Dragona", "No lo detienes. Lo integras.\nPero primero necesito recuperar mis datos perdidos.\nBusca el ovillo rojo en las imágenes.\n\n[E para cerrar]")
+				Global.show_dialogue(self, "IA Dragona", "No lo detienes. Lo integras. Pero primero, debes ver lo que estamos protegiendo.\n\n[E para iniciar decodificación]")
+			
+			# Trigger the video here!
+			await Global.dialogue_ui.option_selected
+			var main = get_tree().current_scene
+			if main and main.has_method("play_dragona_memory_video"):
+				Global.hide_dialogue(self)
+				await main.play_dragona_memory_video()
+			
+			Global.show_dialogue(self, "IA Dragona", "Para restaurar mi núcleo, necesito el ovillo rojo.\nBusca entre las imágenes del museo. El código está incompleto sin él.\n\n[E para cerrar]")
 
 		elif Global.current_quest_stage == Global.QuestStage.SEARCHING_ARTIFACT:
 			Global.show_dialogue(self, "IA Dragona", "Sigue buscando el ovillo...\nEl código está incompleto sin él.\n\n[E para cerrar]")
