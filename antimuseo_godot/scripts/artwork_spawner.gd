@@ -1,7 +1,7 @@
 extends Node3D
 
 @export var artwork_scene: PackedScene
-@export var images_path: String = "res://assets/ASASDADA"
+@export var images_path: String = "res://assets/MUSEO TRAVESTI"
 
 var image_files: Array[String] = []
 var floating_artworks: Array[Node] = []
