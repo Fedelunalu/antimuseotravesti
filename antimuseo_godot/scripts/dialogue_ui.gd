@@ -74,7 +74,12 @@ var advance_cooldown = 0.1 # seconds
 
 func _input(event):
 	# Handle E key to advance dialogue when no options are shown
+	# BUT: Don't consume if journal is visible (allow typing 'e')
 	if event.is_action_pressed("interact") and visible and options_container and not options_container.visible and not is_timed:
+		# Check if journal is open - if so, don't consume the event
+		if Global.journal and Global.journal.visible:
+			return # Let the journal handle the 'e' key
+			
 		var current_time = Time.get_ticks_msec() / 1000.0
 		if current_time - last_advance_time < advance_cooldown:
 			return

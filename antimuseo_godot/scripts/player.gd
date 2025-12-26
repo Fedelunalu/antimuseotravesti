@@ -11,6 +11,12 @@ extends CharacterBody3D
 @onready var camera = $Neck/Camera3D
 @onready var raycast = $Neck/Camera3D/RayCast3D
 
+# --- Variables de Mejora Estética/Audio ---
+var flight_trail: CPUParticles3D = null
+var wind_player: AudioStreamPlayer = null
+var wind_generator: AudioStreamGeneratorPlayback = null
+var target_wind_volume = -80.0
+
 # --- Variables de Estado ---
 enum PlayerState { GROUNDED, FLYING }
 var current_state = PlayerState.GROUNDED
@@ -24,6 +30,10 @@ func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
 	raycast.target_position = Vector3(0, 0, -3)
+	
+	# Inicializar Mejoras
+	setup_flight_trail()
+	setup_procedural_wind()
 
 func _physics_process(_delta):
 	# 1. Actualizar estado (en suelo o volando)
@@ -39,11 +49,15 @@ func _physics_process(_delta):
 
 	# 3. Manejar la interacción con el RayCast
 	handle_interaction()
+	
+	# 4. Actualizar Efectos
+	update_effects_state(_delta)
 
 func update_state(_delta):
 	# Si el jugador puede volar y presiona Espacio mientras está en el aire, activar vuelo INMEDIATAMENTE
 	if can_fly and Input.is_action_just_pressed("ui_accept") and not is_on_floor():
 		current_state = PlayerState.FLYING
+		Global.add_signal("LOG: Desacople gravitacional exitoso.", "flight_log")
 		print("¡Modo vuelo activado!")
 	
 	# Si el jugador toca el suelo, volver al estado en tierra
@@ -60,6 +74,9 @@ func calculate_velocity(_delta):
 			# Aplicar gravedad si no está en el suelo
 			if not is_on_floor():
 				new_velocity.y -= gravity_value * _delta
+				if position.y < -50 and is_physics_processing():
+					Global.add_signal("ERROR: Coordenada Y fuera de límites. Reajustando...", "fall_log")
+					position = Vector3(0, 5, 0) # Teleport back
 			else:
 				new_velocity.y = -0.1 # Mantener contacto con el suelo
 
@@ -227,3 +244,103 @@ func get_flight_status() -> String:
 			return "Estado: Volando (Espacio/Shift para subir/bajar)"
 		_:
 			return "Estado: En el aire"
+func update_effects_state(_delta):
+	# 1. Trail de Vuelo
+	if flight_trail:
+		# Solo emitir si está volando Y se está moviendo significativamente
+		flight_trail.emitting = (current_state == PlayerState.FLYING and velocity.length() > 0.5)
+	
+	# 2. Volumen de Viento (Damping suave)
+	if wind_player:
+		if current_state == PlayerState.FLYING:
+			# Escalar volumen para que sea CLARAMENTE audible ( -40 a 0 dB)
+			var speed_factor = clamp(velocity.length() / fly_speed, 0.0, 1.0)
+			target_wind_volume = lerp(-40.0, 0.0, speed_factor)
+		else:
+			target_wind_volume = -80.0
+		
+		# Fades extremadamente lentos (0.01) para evitar arranques bruscos
+		wind_player.volume_db = lerp(wind_player.volume_db, target_wind_volume, 0.01)
+		
+		# Mantener el buffer de audio (generar ruido blanco suave)
+		if wind_generator:
+			fill_wind_buffer()
+
+func setup_flight_trail():
+	flight_trail = CPUParticles3D.new()
+	flight_trail.name = "FlightTrail"
+	flight_trail.amount = 80 # Más partículas para suavidad
+	flight_trail.lifetime = 2.5 # Estela más larga
+	flight_trail.emitting = false 
+	
+	flight_trail.position = Vector3(0, -0.8, 0)
+	flight_trail.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	flight_trail.emission_sphere_radius = 0.1 # Más fino
+	
+	var mesh = QuadMesh.new()
+	mesh.size = Vector2(0.08, 0.08) # Más fino
+	flight_trail.mesh = mesh
+	
+	var mat = StandardMaterial3D.new()
+	mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.billboard_mode = StandardMaterial3D.BILLBOARD_PARTICLES
+	flight_trail.material_override = mat
+	
+	var gradient = Gradient.new()
+	gradient.add_point(0.0, Color(1, 0.1, 0.6, 0.4)) # Rosa Neón suave
+	gradient.add_point(0.2, Color(1, 0.3, 0.7, 0.3))
+	gradient.add_point(1.0, Color(1, 1, 1, 0.0))    
+	flight_trail.color_ramp = gradient
+	
+	flight_trail.gravity = Vector3(0, 0.2, 0) # Ascenso muy lento
+	flight_trail.direction = Vector3(0, 0, 1) 
+	flight_trail.spread = 5.0 # Casi sin dispersión para ser lineal
+	flight_trail.initial_velocity_min = 0.5
+	flight_trail.initial_velocity_max = 1.0
+	
+	flight_trail.scale_amount_min = 0.2
+	flight_trail.scale_amount_max = 0.6
+	
+	add_child(flight_trail)
+
+func setup_procedural_wind():
+	wind_player = AudioStreamPlayer.new()
+	var stream = AudioStreamGenerator.new()
+	stream.mix_rate = 44100
+	wind_player.stream = stream
+	wind_player.autoplay = true
+	wind_player.volume_db = -80.0 
+	add_child(wind_player)
+	wind_player.play() # Iniciar explícitamente antes de obtener playback
+	
+	wind_generator = wind_player.get_stream_playback()
+
+var last_audio_sample = 0.0
+var filter_state = 0.0
+var phase = 0.0
+
+func fill_wind_buffer():
+	var speed_factor = clamp(velocity.length() / fly_speed, 0.0, 1.0)
+	var frames = wind_generator.get_frames_available()
+	
+	while frames > 0:
+		phase += 0.001
+		# Modulación LFO suave (0.5Hz a 2Hz)
+		var lfo = (sin(phase * 2.0 * PI * 0.5) + 1.0) * 0.5
+		
+		# Ruido blanco base MUCHO más tenue (0.02 max)
+		var raw_sample = randf_range(-0.02, 0.02) * (0.8 + lfo * 0.4)
+		
+		# Filtro Pasa-Bajo Resonante (suavizado aumentado)
+		var cutoff = lerp(0.01, 0.08, speed_factor)
+		var sample = filter_state + cutoff * (raw_sample - filter_state)
+		filter_state = sample
+		
+		# Silbido casi imperceptible
+		var whistle = sin(phase * 2.0 * PI * lerp(150.0, 400.0, speed_factor)) * 0.002 * speed_factor
+		var final_sample = sample + whistle
+		
+		wind_generator.push_frame(Vector2(final_sample, final_sample))
+		frames -= 1

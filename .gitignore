@@ -4,6 +4,11 @@
 .import/
 export_presets.cfg
 build/
+export_web/
+
+# Archivos binarios pesados de Godot
+*.pck
+*.wasm
 
 # Archivos grandes (Límite de GitHub 100MB)
 *.zip

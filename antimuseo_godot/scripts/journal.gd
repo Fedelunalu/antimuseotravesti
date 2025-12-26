@@ -42,8 +42,84 @@ func _ready():
 	
 	# Verificar milestones iniciales (por si acaso)
 	check_fragment_milestones()
+	
+	# --- BOTÓN DESCARGAR ---
+	_setup_download_button()
+
+func _setup_download_button():
+	var btn = Button.new()
+	btn.text = "📥 Descargar Bitácora (.txt)"
+	btn.position = Vector2(10, 550) # Esquina inferior izquierda del panel
+	btn.custom_minimum_size = Vector2(200, 40)
+	btn.tooltip_text = "Guarda tus memorias en un archivo externo"
+	btn.pressed.connect(download_journal)
+	$Panel.add_child(btn)
+
+func download_journal():
+	var file_content = "=== BITÁCORA DEL ANTIMUSEO TRAVESTI ===\n"
+	file_content += "Fecha: " + Time.get_datetime_string_from_system() + "\n\n"
+	
+	file_content += "--- TUS ESCRITOS ---\n"
+	file_content += text_area.text + "\n\n"
+	
+	file_content += "--- FRAGMENTOS VISUALES RECOGIDOS ---\n"
+	for frag in journal_data.fragments:
+		file_content += "- " + frag.name + " (" + frag.image + ")\n"
+	
+	file_content += "\n--- SEÑALES DEL SISTEMA ---\n"
+	for sig in journal_data.signals:
+		file_content += "[" + str(int(sig.timestamp) % 10000) + "] " + sig.text + "\n"
+	
+	file_content += "\n=== FIN DEL REGISTRO ==="
+	
+	# Detectar plataforma
+	if OS.has_feature("web"):
+		# WEB: Usar JavaScript para descargar
+		var js_code = """
+		var blob = new Blob([UTF8ToString($0)], {type: 'text/plain'});
+		var url = URL.createObjectURL(blob);
+		var a = document.createElement('a');
+		a.href = url;
+		a.download = 'bitacora_antimuseo.txt';
+		a.click();
+		URL.revokeObjectURL(url);
+		"""
+		JavaScriptBridge.eval(js_code.replace("$0", str(file_content.to_utf8_buffer())))
+		print("💾 Bitácora descargada (Web) - Revisa tu carpeta de Descargas")
+		_show_download_confirmation("Tu memoria ha sido extraída del archivo.\nRevisa tu carpeta de Descargas.")
+	else:
+		# DESKTOP: Usar user:// (siempre tiene permisos)
+		var path = "user://bitacora_antimuseo.txt"
+		var file = FileAccess.open(path, FileAccess.WRITE)
+		if file:
+			file.store_string(file_content)
+			file.close()
+			var real_path = ProjectSettings.globalize_path(path)
+			print("💾 Bitácora descargada en: ", real_path)
+			_show_download_confirmation("Tu memoria ha sido extraída del archivo.\nGuardada en: " + real_path.get_file())
+		else:
+			print("❌ Error al guardar bitácora")
+			_show_download_confirmation("El archivo resistió la extracción.\nIntenta copiar el texto manualmente.")
+
+func _show_download_confirmation(message: String):
+	# Crear label flotante que no tape la bitácora
+	var confirm_label = Label.new()
+	confirm_label.text = message
+	confirm_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	confirm_label.add_theme_font_size_override("font_size", 18)
+	confirm_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.7))
+	confirm_label.position = Vector2(400, 20)  # Arriba, no tapa el botón
+	confirm_label.size = Vector2(480, 80)
+	confirm_label.autowrap_mode = TextServer.AUTOWRAP_WORD
+	$Panel.add_child(confirm_label)
+	
+	# Fade out después de 3 segundos
+	var tween = create_tween()
+	tween.tween_property(confirm_label, "modulate:a", 0.0, 1.0).set_delay(2.0)
+	tween.tween_callback(confirm_label.queue_free)
 
 func _input(event):
+	# Toggle journal con TAB - SIEMPRE debe funcionar
 	if event.is_action_pressed("toggle_journal"):
 		visible = !visible
 		if visible:

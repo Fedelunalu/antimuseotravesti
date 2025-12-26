@@ -1,7 +1,11 @@
 extends StaticBody3D
 
 @onready var mesh = $MeshInstance3D if has_node("MeshInstance3D") else null
-@onready var audio_player = $AudioStreamPlayer3D if has_node("AudioStreamPlayer3D") else null
+@onready var spotlight = $SpotLight3D if has_node("SpotLight3D") else null
+
+var original_light_energy = 0.1
+var original_emission_energy = 0.0
+var glow_tween: Tween = null
 
 var texture_path: String = ""
 var is_gazed = false
@@ -24,8 +28,16 @@ func _ready():
 				material.emission_texture = texture
 				material.metallic = 0.1
 				material.roughness = 0.7
+				
+				# --- AUTO-CROP: Eliminar bordes de capturas (Barra de tareas, etc) ---
+				# Hacemos un pequeño "zoom" del 4% hacia el centro.
+				var crop_factor = 0.04
+				material.uv1_scale = Vector3(1.0 - (crop_factor * 2.0), 1.0 - (crop_factor * 2.0), 1.0)
+				material.uv1_offset = Vector3(crop_factor, crop_factor, 0.0)
+				
 				mesh.material_override = material
 				has_texture = true
+				original_emission_energy = material.emission_energy_multiplier # Store original emission
 		
 		if not has_texture:
 			# Fallback color for web when load fails
@@ -36,6 +48,9 @@ func _ready():
 	
 	# Agregar al grupo de obras de arte
 	add_to_group("artwork")
+	
+	if spotlight:
+		original_light_energy = spotlight.light_energy
 
 func load_artwork_descriptions():
 	var json_path = "res://artwork_descriptions.json"
@@ -52,17 +67,31 @@ func set_texture_path(path: String):
 
 func on_gaze_enter():
 	is_gazed = true
-	# Solo mostrar prompt de interacción, sin descripción
-	print("👁️ MIRADO: ", name)
-	if audio_player:
-		audio_player.play()
+	# NO activar brillo - mantener imagen clara y legible
+	# apply_glow_effect(original_emission_energy + 2.0, original_light_energy + 1.0)
 
 func on_gaze_exit():
 	is_gazed = false
-	print("👁️ DEJADO: ", name)
+	# Mantener sin cambios
+	# apply_glow_effect(original_emission_energy, original_light_energy)
 	Global.hide_dialogue(self)
-	if audio_player:
-		audio_player.stop()
+
+func apply_glow_effect(target_emission: float, target_light: float):
+	if glow_tween:
+		glow_tween.kill()
+	
+	glow_tween = create_tween().set_parallel(true)
+	
+	# Brillo Material
+	if mesh:
+		var mat = mesh.get_active_material(0)
+		if mat is StandardMaterial3D:
+			mat.emission_enabled = true
+			glow_tween.tween_property(mat, "emission_energy_multiplier", target_emission, 0.5)
+	
+	# Brillo Luz
+	if spotlight:
+		glow_tween.tween_property(spotlight, "light_energy", target_light, 0.5)
 
 var is_quest_target = false
 
@@ -93,6 +122,11 @@ func interact(_player = null):
 		# Texto críptico y ambiguo standard (si no es quest o ya se encontró)
 		var _artwork_name = texture_path.get_file().get_basename()
 		var cryptic_text = generate_cryptic_fragment()
+		
+		# Durante la búsqueda del ovillo, incitar al uso de la bitácora
+		if Global.current_quest_stage == Global.QuestStage.SEARCHING_ARTIFACT:
+			cryptic_text += "\n\n[¿Qué te produce esta imagen? Anótalo en tu Bitácora (TAB)]"
+			
 		Global.show_dialogue(self, "", cryptic_text)
 		_play_interaction_feedback()
 		
@@ -125,13 +159,9 @@ func interact(_player = null):
 				main.spawn_shadow()
 				print("🔴 spawn_shadow() completado")
 			else:
-				print("❌ main.spawn_shadow() NO encontrado o main es null")
+				print("❌ main.spawn_shadow() NO encontrado o main is null")
 		elif Global.shadow_spawned:
 			print("⚠️ Shadow ya fue triggereado anteriormente")
-		
-		# Reproducir sonido si está disponible
-		if audio_player:
-			audio_player.play()
 
 func set_quest_target():
 	is_quest_target = true
@@ -257,15 +287,15 @@ func generate_signal() -> String:
 func _play_interaction_feedback():
 	if mesh and mesh.material_override is StandardMaterial3D:
 		var material = mesh.material_override
-		var original_emission_energy = material.emission_energy_multiplier
+		var current_emission = material.emission_energy_multiplier
 		
 		var tween = create_tween()
 		tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		
 		# Animate to a brighter emission
-		tween.tween_property(material, "emission_energy_multiplier", original_emission_energy + 2.0, 0.15)
+		tween.tween_property(material, "emission_energy_multiplier", current_emission + 2.0, 0.15)
 		# Animate back to original
-		tween.tween_property(material, "emission_energy_multiplier", original_emission_energy, 0.5)
+		tween.tween_property(material, "emission_energy_multiplier", current_emission, 0.5)
 
 func _play_shadow_warning_effect(player_node: Node3D):
 	if not player_node:
